@@ -1,4 +1,5 @@
 package com.panoramaview
+import com.viromedia.bridge.ReactViroPackage
 
 import android.app.Application
 import com.facebook.react.PackageList
@@ -20,6 +21,7 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
+                add(ReactViroPackage(ReactViroPackage.ViroPlatform.valueOf("AR")))
             }
 
         override fun getJSMainModuleName(): String = "index"

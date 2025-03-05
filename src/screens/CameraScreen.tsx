@@ -22,32 +22,26 @@ import {
     View,
 } from "react-native";
 import {
-    Camera,
-    useCameraDevice,
-    useCameraPermission,
-} from "react-native-vision-camera";
-import {
     ViroARScene,
     ViroARSceneNavigator,
     ViroScene,
 } from "@reactvision/react-viro";
 import ARScene from "components/ui/camera/ARScene";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Grid from "components/ui/Grid";
 
 const ARSceneContext = createContext<{ resetBoxes?: () => void }>({});
 
 export const useARScene = () => useContext(ARSceneContext);
 
 const CameraScreen = () => {
-    const device = useCameraDevice("back");
-    const camera = useRef<Camera>(null);
     const photos = useRef<string[]>([]);
     const [photosCollection, setPhotosCollection] = useState<string[]>([]);
+    const [modalInstructionsVisible, setModalInstructionsVisible] =
+        useState(true);
     const arSceneRef = useRef<ViroARSceneNavigator>(null);
 
     const [isTakingPhoto, setIsTakingPhoto] = useState(false);
-    const { hasPermission, requestPermission } = useCameraPermission();
-    const [isModalVisible, setIsModalVisible] = useState(!hasPermission);
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState(
         "Uploading images to server..."
@@ -58,30 +52,10 @@ const CameraScreen = () => {
     const [nameModalVisible, setNameModalVisible] = useState(false);
     const [photoName, setPhotoName] = useState("");
 
-    const onRequestPermission = async () => {
-        const permission = await Camera.requestCameraPermission();
-        if (permission === "denied") {
-            await Linking.openSettings();
-        }
-    };
-    useEffect(() => {
-        if (hasPermission) {
-            setIsModalVisible(false);
-        }
-    }, [hasPermission]);
-
     const handleCapture = () => {
         console.log("Handle capture");
         takePhoto();
     };
-
-    if (device == null) {
-        return (
-            <View>
-                <Text>No camera available</Text>
-            </View>
-        );
-    }
 
     const takePhoto = () => {
         console.log("Capturing screenshot", arSceneRef.current);
@@ -92,7 +66,6 @@ const CameraScreen = () => {
                     false
                 )
                 .then((image: any) => {
-                    // console.log("Imagen tomada", image);
                     console.log("Images List", photos);
                     const newArray = [...photos.current, image.url];
                     console.log("New array", newArray);
@@ -100,7 +73,7 @@ const CameraScreen = () => {
                     setIsTakingPhoto(false);
                     setPhotosCollection(newArray);
 
-                    if (photos.current.length === 8) {
+                    if (photos.current.length === 40) {
                         sendPhotosToBackend(photos.current);
                     }
                 });
@@ -213,100 +186,116 @@ const CameraScreen = () => {
 
     return (
         <>
-            {device != undefined ? (
-                <View style={[styles.container]}>
-                    <ViroARSceneNavigator
-                        ref={arSceneRef}
-                        initialScene={{
-                            scene: () => <ARScene onCapture={handleCapture} />,
+            <View style={[styles.container]}>
+                <ViroARSceneNavigator
+                    ref={arSceneRef}
+                    initialScene={{
+                        scene: () => (
+                            <ARScene
+                                onCapture={handleCapture}
+                                imagesList={photos.current}
+                            />
+                        ),
+                    }}
+                />
+                <Grid />
+                {loading && (
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            justifyContent: "center",
+                            alignItems: "center",
                         }}
-                    />
-                    {loading && (
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                justifyContent: "center",
-                                alignItems: "center",
-                            }}
-                        >
-                            <Text style={styles.loadingText}>
-                                {loadingMessage}{" "}
-                            </Text>
-                            <ActivityIndicator size="small" color="#007AFF" />
-                        </View>
-                    )}
-
-                    {/* <CameraGuide onCapture={takePhoto} /> */}
-                    <View>
-                        <ScrollView horizontal={true}>
-                            {photos.current.map((photo, index) => (
-                                <View key={index}>
-                                    <Image
-                                        source={{ uri: photo }}
-                                        style={{ width: 100, height: 100 }}
-                                    />
-                                    <View
+                    >
+                        <Text style={styles.loadingText}>
+                            {loadingMessage}{" "}
+                        </Text>
+                        <ActivityIndicator size="small" color="#007AFF" />
+                    </View>
+                )}
+                <View>
+                    <ScrollView horizontal={true}>
+                        {photos.current.map((photo, index) => (
+                            <View key={index}>
+                                <Image
+                                    source={{ uri: photo }}
+                                    style={{ width: 100, height: 100 }}
+                                />
+                                <View
+                                    style={{
+                                        position: "absolute",
+                                        top: 10,
+                                        left: 10,
+                                    }}
+                                >
+                                    <Text
                                         style={{
-                                            position: "absolute",
-                                            top: 10,
-                                            left: 10,
+                                            fontSize: 40,
+                                            color: "white",
+                                            fontWeight: "bold",
                                         }}
                                     >
-                                        <Text
-                                            style={{
-                                                fontSize: 40,
-                                                color: "white",
-                                                fontWeight: "bold",
-                                            }}
-                                        >
-                                            {index}
-                                        </Text>
-                                    </View>
+                                        {index}
+                                    </Text>
                                 </View>
-                            ))}
-                        </ScrollView>
+                            </View>
+                        ))}
+                    </ScrollView>
 
-                        <View>
-                            {isTakingPhoto ? <Text>Capturing</Text> : null}
+                    <View>{isTakingPhoto ? <Text>Capturing</Text> : null}</View>
+                </View>
+                <Modal
+                    visible={modalInstructionsVisible}
+                    transparent
+                    animationType="slide"
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>
+                                Toca los puntos blancos para capturar una
+                                imagen, intenta centrarlos en la grilla antes de
+                                capturar la foto
+                            </Text>
+
+                            <TouchableOpacity
+                                style={styles.saveButton}
+                                onPress={() => {
+                                    setModalInstructionsVisible(false);
+                                }}
+                            >
+                                <Text style={styles.buttonText}>
+                                    Entendido!
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                    <Modal
-                        visible={isModalVisible}
-                        transparent
-                        animationType="slide"
-                    >
-                        <Text>No access to camera</Text>
-                        <Text onPress={onRequestPermission}>Grant Access</Text>
-                    </Modal>
-                    <Modal
-                        visible={nameModalVisible}
-                        transparent
-                        animationType="slide"
-                    >
-                        <View style={styles.modalContainer}>
-                            <View style={styles.modalContent}>
-                                <Text style={styles.modalTitle}>
-                                    Save 360° Image
-                                </Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter image name"
-                                    value={photoName}
-                                    onChangeText={setPhotoName}
-                                />
-                                <TouchableOpacity
-                                    style={styles.saveButton}
-                                    onPress={saveImage}
-                                >
-                                    <Text style={styles.buttonText}>Save</Text>
-                                </TouchableOpacity>
-                            </View>
+                </Modal>
+                <Modal
+                    visible={nameModalVisible}
+                    transparent
+                    animationType="slide"
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>
+                                Save 360° Image
+                            </Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter image name"
+                                value={photoName}
+                                onChangeText={setPhotoName}
+                            />
+                            <TouchableOpacity
+                                style={styles.saveButton}
+                                onPress={saveImage}
+                            >
+                                <Text style={styles.buttonText}>Save</Text>
+                            </TouchableOpacity>
                         </View>
-                    </Modal>
-                </View>
-            ) : (
-                <></>
-            )}
+                    </View>
+                </Modal>
+            </View>
         </>
     );
 };

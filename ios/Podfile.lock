@@ -1768,12 +1768,6 @@ PODS:
     - React
   - ViroReact (1.0):
     - React
-  - VisionCamera (4.6.3):
-    - VisionCamera/Core (= 4.6.3)
-    - VisionCamera/React (= 4.6.3)
-  - VisionCamera/Core (4.6.3)
-  - VisionCamera/React (4.6.3):
-    - React-Core
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1852,7 +1846,6 @@ DEPENDENCIES:
   - RNSVG (from `../node_modules/react-native-svg`)
   - "ViroKit (from `../node_modules/@reactvision/react-viro/ios/dist/ViroRenderer/`)"
   - "ViroReact (from `../node_modules/@reactvision/react-viro/ios/`)"
-  - VisionCamera (from `../node_modules/react-native-vision-camera`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2007,8 +2000,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@reactvision/react-viro/ios/dist/ViroRenderer/"
   ViroReact:
     :path: "../node_modules/@reactvision/react-viro/ios/"
-  VisionCamera:
-    :path: "../node_modules/react-native-vision-camera"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2087,7 +2078,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   ViroKit: 728e2547f4ac693a69fa7652813ec178a361dbd6
   ViroReact: 0fe7ad200cee750209ef1e767f677a90f4736bf0
-  VisionCamera: 030bcbf22791d698926e7c0e3b804126165e62e3
   Yoga: 8f66bb075b2ee756255a16a6b6c37cef19bbcb40
 
 PODFILE CHECKSUM: 8a536f094d9ad514438c8b679128e711a17c8430

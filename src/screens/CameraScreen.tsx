@@ -28,6 +28,7 @@ import {
 } from "@reactvision/react-viro";
 import ARScene from "components/ui/camera/ARScene";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import RNFS from "react-native-fs";
 import Grid from "components/ui/Grid";
 
 const ARSceneContext = createContext<{ resetBoxes?: () => void }>({});
@@ -37,6 +38,7 @@ export const useARScene = () => useContext(ARSceneContext);
 const CameraScreen = () => {
     const photos = useRef<string[]>([]);
     const [photosCollection, setPhotosCollection] = useState<string[]>([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [modalInstructionsVisible, setModalInstructionsVisible] =
         useState(true);
     const arSceneRef = useRef<ViroARSceneNavigator>(null);
@@ -73,7 +75,7 @@ const CameraScreen = () => {
                     setIsTakingPhoto(false);
                     setPhotosCollection(newArray);
 
-                    if (photos.current.length === 40) {
+                    if (photos.current.length === 16) {
                         sendPhotosToBackend(photos.current);
                     }
                 });
@@ -98,41 +100,54 @@ const CameraScreen = () => {
         });
 
         console.log("🚀 Sending request to backend...");
-        fetch("https://urchin-app-9w2fs.ondigitalocean.app/stitch", {
-            body: formData,
-            method: "POST",
-            headers: { "Content-Type": "multipart/form-data" },
-        })
-            .then((response: any) => {
-                console.log("✅ Server Response:", response);
+        console.log("🚀 Sending request to backend...");
 
-                if (response.status === 200 && response.data.url) {
-                    setProcessedImageUrl(response.data.url);
-                    setLoading(false);
-                    setNameModalVisible(true);
-                } else {
-                    Alert.alert(
-                        "Error",
-                        "The server did not return a valid image URL."
-                    );
-                    setLoading(false);
+        const xhr = new XMLHttpRequest();
+
+        // Evento para rastrear el progreso del envío
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const progress = (event.loaded / event.total) * 100;
+                console.log(`📤 Upload Progress: ${progress.toFixed(2)}%`);
+                setUploadProgress(progress);
+            }
+        };
+
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    console.log("✅ Server Response:", response);
+
+                    if (xhr.status === 200 && response.url) {
+                        setProcessedImageUrl(response.url);
+                        setLoading(false);
+                        setNameModalVisible(true);
+                    } else {
+                        Alert.alert(
+                            "Error",
+                            "The server did not return a valid image URL."
+                        );
+                        setLoading(false);
+                    }
+                } catch (error) {
+                    console.error("❌ Error parsing response:", error);
                 }
-            })
-            .catch((error: any) => {
-                console.error("❌ Error sending request to backend:", error);
-                Alert.alert(
-                    "Error",
-                    "Something went wrong while sending the image."
-                );
-                arSceneRef.current?.arSceneNavigator.resetARSession(
-                    false,
-                    false
-                );
-                setPhotosCollection([]);
-                photos.current = [];
-                setProcessedImageUrl(null);
-                setLoading(false);
-            });
+            }
+        };
+
+        xhr.onerror = () => {
+            console.error("❌ Error sending request to backend");
+            Alert.alert(
+                "Error",
+                "Something went wrong while sending the image."
+            );
+            setLoading(false);
+        };
+
+        xhr.open("POST", "https://urchin-app-9w2fs.ondigitalocean.app/stitch");
+        xhr.setRequestHeader("Content-Type", "multipart/form-data");
+        xhr.send(formData);
     };
     const downloadImage = async (imageUrl: string): Promise<string> => {
         fetch(imageUrl)
@@ -159,28 +174,63 @@ const CameraScreen = () => {
 
         return "null";
     };
+    const saveImageLocally = async (imageUrl: string, photoName: string) => {
+        try {
+            if (!imageUrl || !photoName.trim()) return null;
+
+            // Definir la ruta donde se guardará la imagen dentro de la app
+            const path = `${RNFS.DocumentDirectoryPath}/${photoName}.jpg`;
+
+            // Descargar la imagen y guardarla en la ruta
+            const response = await RNFS.downloadFile({
+                fromUrl: imageUrl, // Descarga la imagen desde la URL externa
+                toFile: path, // La guarda en el almacenamiento interno de la app
+            }).promise;
+
+            if (response.statusCode === 200) {
+                return path; // Retorna la ruta local del archivo guardado
+            } else {
+                Alert.alert("Error", "No se pudo guardar la imagen.");
+                return null;
+            }
+        } catch (error) {
+            console.error("Error al guardar la imagen:", error);
+            Alert.alert("Error", "Ocurrió un problema al guardar la imagen.");
+            return null;
+        }
+    };
+
     const saveImage = async () => {
         if (processedImageUrl && photoName.trim()) {
-            const localUri = await downloadImage(processedImageUrl);
+            // Llamamos a saveImageLocally para descargar y almacenar la imagen
+            const localUri = await saveImageLocally(
+                processedImageUrl,
+                photoName
+            );
 
             if (!localUri) {
-                Alert.alert("Error", "Failed to save the image locally.");
+                Alert.alert(
+                    "Error",
+                    "No se pudo guardar la imagen localmente."
+                );
                 return;
             }
 
+            // Guardar la referencia en AsyncStorage
             const newImage = { name: photoName, uri: localUri };
             const storedImages = await AsyncStorage.getItem("galleryImages");
             const images = storedImages ? JSON.parse(storedImages) : [];
             images.push(newImage);
             await AsyncStorage.setItem("galleryImages", JSON.stringify(images));
 
+            // Resetear estados después de guardar la imagen
             setPhotosCollection([]);
             photos.current = [];
             setProcessedImageUrl(null);
             setPhotoName("");
             setNameModalVisible(false);
 
-            // router.push("/gallery");
+            // router.push("/gallery"); // Si necesitas redirigir a otra pantalla
         }
     };
 
@@ -214,6 +264,23 @@ const CameraScreen = () => {
                     </View>
                 )}
                 <View>
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            height: 10,
+                            backgroundColor: "gray",
+                        }}
+                    >
+                        <View
+                            style={{
+                                position: "absolute",
+                                width: `${Math.min(100, uploadProgress)}%`,
+                                height: 10,
+                                backgroundColor: "dodgerblue",
+                            }}
+                        ></View>
+                    </View>
                     <ScrollView horizontal={true}>
                         {photos.current.map((photo, index) => (
                             <View key={index}>

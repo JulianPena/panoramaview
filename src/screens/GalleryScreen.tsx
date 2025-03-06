@@ -18,7 +18,13 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 export default function GalleryScreen() {
     const [images, setImages] = useState<
         { name: string; uri: string; date: string }[]
-    >([]);
+    >([
+        {
+            name: "test.jpg",
+            uri: "https://picsum.photos/id/10/200/300",
+            date: "2023-01-01",
+        },
+    ]);
     const [modalVisible, setModalVisible] = useState(false);
     const [imageModalVisible, setImageModalVisible] = useState(false);
     const [selectedImage, setSelectedImage] = useState<{
@@ -84,6 +90,16 @@ export default function GalleryScreen() {
         navigator.navigate("Visualizer" as never);
     };
 
+    useEffect(() => {
+        console.log("Images", selectedImage?.uri);
+        if (selectedImage?.uri) {
+            //@ts-ignore
+            navigator.navigate("Visualizer", {
+                image: selectedImage.uri,
+            });
+        }
+    }, [selectedImage]);
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>My Gallery</Text>
@@ -116,8 +132,8 @@ export default function GalleryScreen() {
                                     style={styles.actionButton}
                                     onPress={() => {
                                         setSelectedImage(item);
-                                        setNewName(item.name);
-                                        setModalVisible(true);
+                                        // setNewName(item.name);
+                                        // setModalVisible(true);
                                     }}
                                 >
                                     {/* <MaterialCommunityIcons name="pencil" size={18} color="white" /> */}

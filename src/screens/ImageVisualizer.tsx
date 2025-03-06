@@ -8,14 +8,26 @@ import React from "react";
 import { Button, View } from "react-native";
 import { ArrowLeftIcon, ChevronLeftIcon } from "react-native-heroicons/outline";
 
-const ImageVisualizer = () => {
+//@ts-ignore
+const ImageVisualizer = ({ route }) => {
     const navigator = useNavigation();
+    console.log("Route", route.params);
     const ARVisualizer = () => {
-        return (
-            <ViroARScene>
-                <Viro360Image source={require("assets/images/referen.png")} />
-            </ViroARScene>
-        );
+        if (route.params.image) {
+            return (
+                <ViroARScene>
+                    <Viro360Image source={{ uri: route.params.image }} />
+                </ViroARScene>
+            );
+        } else {
+            return (
+                <ViroARScene>
+                    <Viro360Image
+                        source={require("assets/images/referen.png")}
+                    />
+                </ViroARScene>
+            );
+        }
     };
     const bacckHandler = () => {
         navigator.goBack();
